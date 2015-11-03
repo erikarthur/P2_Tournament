@@ -10,8 +10,8 @@ Getting started on this project is a little involved because of the setting up t
 3. SSH into the VM once it's running - cd vagrant; vagrant ssh
 4. Run the setup script to create the database and tables - ./setup.sh
 5. Done.  
-  A. You can run the unit tests with 'python tournament_test.py'
-  B. Run the 17 player version I supplied with 'python myTourney.py'
+	* You can run the unit tests with 'python tournament_test.py'
+	* Run the 17 player version I supplied with 'python myTourney.py'
 
 ##What's included
 ---
