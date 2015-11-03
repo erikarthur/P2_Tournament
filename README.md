@@ -28,7 +28,7 @@ Getting started on this project is a little involved because of the setting up t
 + tournament_test.py
 
 **myTourney.py** 
-    creates and runs a 17 player tournament.  Shows odd numbers with byes and non powers of 2 for participants
+    creates and runs a 17 player tournament.  Shows support of odd numbers with byes and non powers of 2 for participants
 
 **setup.sh** 
     sets up the database, tables and views in postgres
