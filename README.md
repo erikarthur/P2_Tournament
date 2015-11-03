@@ -1,6 +1,12 @@
 # P2_Tournament
 Full Stack Nano Degree - Tournament Project
 
+Runs a swiss pair style tournament.  This code supports:
+* non power of 2 participants - you can do whatever number GREATER than 1.
+* non-even numbers of participants so in an odd number case, one use will get a BYE in each round.
+
+**Note:  If you deviate too far from a power of 2 then you are not guanranteed a non-tie when running log(players, 2) rounds.  This would happen most frequently for numbers of players just beyond a power of 2.  In that case you should examine the output of **playerStandings()** and run additional rounds if you want to get a single winner.  You will not experience this use case if you restrict yourself to numbers of players that are a power of 2.
+
 ##Getting Started
 ---
 Getting started on this project is a little involved because of the setting up the vagrant vm and the postgresql database.
