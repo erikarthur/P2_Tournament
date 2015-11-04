@@ -14,9 +14,9 @@ DROP TABLE if EXISTS players CASCADE;
 
 CREATE TABLE players
 (
-  id serial NOT NULL,
+  id serial,
   name text,
-  CONSTRAINT key PRIMARY KEY (id)
+  CONSTRAINT players_key PRIMARY KEY (id)
 )
 WITH (
   OIDS=FALSE
@@ -24,19 +24,19 @@ WITH (
 ALTER TABLE players
   OWNER TO vagrant;
 GRANT ALL ON TABLE players TO vagrant;
---GRANT SELECT, UPDATE, INSERT, TRUNCATE, DELETE ON TABLE players TO public;
 
 DROP TABLE if EXISTS standings CASCADE;
 
 CREATE TABLE standings
 (
-  id serial NOT NULL,
+  id serial,
   player_id  INT NOT NULL,
   matches INT NOT NULL,
   wins  INT NOT NULL,
   losses INT NOT NULL,
   ties INT NOT NULL,
-  used_bye boolean NOT NULL DEFAULT false
+  used_bye boolean NOT NULL DEFAULT false,
+  CONSTRAINT standings_key PRIMARY KEY (id)
 )
 WITH (
   OIDS=FALSE
@@ -44,7 +44,6 @@ WITH (
 ALTER TABLE standings
   OWNER TO vagrant;
 GRANT ALL ON TABLE standings TO vagrant;
---GRANT SELECT, UPDATE, INSERT, TRUNCATE, DELETE ON TABLE standings TO public;
 
 CREATE OR REPLACE VIEW player_standings_view AS
  SELECT players.id,

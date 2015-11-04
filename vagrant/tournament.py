@@ -5,19 +5,7 @@
 
 import psycopg2
 import random
-
-
-def deleteMatches():
-    """Remove all the match records from the database."""
-    db = connect()
-
-    tournament_cursor = db.cursor()
-
-    tournament_cursor.execute("DELETE from standings")
-
-    db.commit()
-
-    db.close()
+import contextlib
 
 
 def connect():
@@ -27,36 +15,40 @@ def connect():
 
     return db
 
+@contextlib.contextmanager
+def get_cursor():
+    """
+    Helper function for using cursors.  Helps to avoid a lot of connect,
+    execute, commit code
+    """
+    conn = connect()
+    cur = conn.cursor()
+    try:
+        yield cur
+    except:
+        raise
+    else:
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+def deleteMatches():
+    """Remove all the match records from the database."""
+    with get_cursor() as cursor:
+        cursor.execute("DELETE from standings")
 
 def deletePlayers():
     """Remove all the player records from the database."""
-    db = connect()
-
-    tournament_cursor = db.cursor()
-
-    tournament_cursor.execute("DELETE from players;")
-
-    db.commit()
-
-    db.close()
-
+    with get_cursor() as cursor:
+        cursor.execute("DELETE from players;")
 
 def countPlayers():
     """Returns the number of players currently registered."""
-    db = connect()
-
-    tournament_cursor = db.cursor()
-
-    tournament_cursor.execute("select count(name) from players")
-
-    rows = tournament_cursor.fetchall()
-
-    db.close()
-
-    [count] = [row[0] for row in rows]
-
-    return count
-
+    with get_cursor() as cursor:
+        cursor.execute("select count(name) from players")
+        rows = cursor.fetchall()
+        return rows[0][0]
 
 def registerPlayer(name):
     """Adds a player to the tournament database.
@@ -67,23 +59,17 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
-    db = connect()
-    tournament_cursor = db.cursor()
-    tournament_cursor.execute(
-        'INSERT INTO players VALUES (default, %s);', (name,))
 
-    # this select is to get the ID for the standings table
-    tournament_cursor.execute(
-        'select * from players where name = %s', (name,))
+    with get_cursor() as cursor:
+        cursor.execute('INSERT INTO players VALUES (default, %s);', (name,))
 
-    rows = tournament_cursor.fetchall()
+        # this select is to get the ID for the standings table
+        cursor.execute('select * from players where name = %s', (name,))
+        rows = cursor.fetchall()
 
-    tournament_cursor.execute(
-        'INSERT INTO standings VALUES (default, %s, %s, %s, %s, %s, %s);',
-        (rows[0][0], 0, 0, 0, 0, 'FALSE'))
-
-    db.commit()
-    db.close()
+        cursor.execute(
+            'INSERT INTO standings VALUES (default, %s, %s, %s, %s, %s, %s);',
+            (rows[0][0], 0, 0, 0, 0, 'FALSE'))
 
 
 def playerStandings():
@@ -99,16 +85,9 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
-    db = connect()
-
-    tournament_cursor = db.cursor()
-    tournament_cursor.execute(
-        "select * from player_standings_view;")
-
-    rows = tournament_cursor.fetchall()
-
-    # close connection
-    db.close()
+    with get_cursor() as cursor:
+        cursor.execute("select * from player_standings_view;")
+        rows = cursor.fetchall()
 
     # output list
     current_standings = []
@@ -127,23 +106,17 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-    db = connect()
-    tournament_cursor = db.cursor()
-
-    # tournament_cursor.execute(
-    #     'insert into matches values (default, %s, %s);', (winner, loser,))
-    tournament_cursor.execute(
+    with get_cursor() as cursor:
+        cursor.execute(
         'update standings set matches = matches + 1, wins = wins + 1  '
         'where player_id = %s;', (winner,))
 
-    # -1 means this was a BYE match so don't record a loser
-    if loser != -1:
-        tournament_cursor.execute(
-            'update standings set matches = matches + 1, losses = losses + 1 '
-            'where player_id = %s;', (loser,))
+        # -1 means this was a BYE match so don't record a loser
+        if loser != -1:
+            cursor.execute(
+                'update standings set matches = matches + 1, '
+                'losses = losses + 1 where player_id = %s;', (loser,))
 
-    db.commit()
-    db.close()
 
 
 def swissPairings():
@@ -161,17 +134,13 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
-    db = connect()
-    tournament_cursor = db.cursor()
+    # get the sorted list of players using a view
+    with get_cursor() as cursor:
+        cursor.execute('select * from swiss_pairings_view;')
+        rows = cursor.fetchall()
 
-    tournament_cursor.execute('select * from swiss_pairings_view;')
-
-    rows = tournament_cursor.fetchall()
-
-    db.close()
-
+    # check number of players and add a bye if number is odd
     if countPlayers() % 2 != 0:
-        # player count is odd need to add a bye to a player
         insertByeMatch(rows)
 
     # simplify the results dataset to just id1, name1, id2, name2
@@ -199,17 +168,10 @@ def insertByeMatch(rows):
             found_player_accepting_bye = True
 
             # update the bye boolean for selected user in the database
-            db = connect()
-            tournament_cursor = db.cursor()
-
-            # create a string for the update query
-            sql_query = 'update standings set used_bye = NOT used_bye \
-                        where id = {0};'.format(test_item[0])
-
-            # execute query, commit and close the connection
-            tournament_cursor.execute(sql_query)
-            db.commit()
-            db.close()
+            with get_cursor() as cursor:
+                cursor.execute(
+                    'update standings set used_bye = NOT used_bye '
+                    'where id = %s;', (test_item[0],))
 
             # inserts bye into rows list
             if pos % 2 == 0:
@@ -218,10 +180,10 @@ def insertByeMatch(rows):
                 rows.insert(pos + 1, bye_tuple)
             else:
                 # pos is odd.  Need to swap pos and pos + 1,
-                # then insert bye at pos + 1
+                # then insert bye at pos + 2
                 bye_tuple = (-1, 'BYE', 0, 0, 0, True)
                 swap_tuple = rows[pos]
                 rows.remove(swap_tuple)
-                rows.insert(pos+1, swap_tuple)
+                rows.insert(pos + 1, swap_tuple)
                 rows.insert(pos + 2, bye_tuple)
     return rows
